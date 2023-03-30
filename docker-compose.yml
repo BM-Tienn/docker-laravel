@@ -1,0 +1,81 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_${APP_NAME}
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/log:/var/log/nginx
+      - .:/var/www/html
+    depends_on:
+      - php
+    restart: always
+    networks:
+      - app-network
+
+  php:
+    build:
+      context: ../docker/php
+      dockerfile: Dockerfile
+    container_name: php_${APP_NAME}
+    volumes:
+      - .:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/php.ini
+    depends_on:
+      - mysql
+      - redis
+    restart: always
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql_${APP_NAME}
+    environment:
+      - "MYSQL_ROOT_PASSWORD=root_password"
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
+    restart: always
+    networks:
+      - app-network
+
+  phpmyadmin:
+    container_name: php_myadmin_${APP_NAME}
+    image: phpmyadmin/phpmyadmin:latest
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: password
+    depends_on:
+      - mysql
+    restart: always
+    networks:
+      - app-network
+
+  redis:
+    container_name: redis_${APP_NAME}
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./docker/redis/data:/data
+      - ../docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    restart: always
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+
+networks:
+  app-network:
+    driver: bridge
